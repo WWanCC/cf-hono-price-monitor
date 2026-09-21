@@ -1,0 +1,12 @@
+{
+  "name": "price-monitor",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "build:web": "pnpm --filter web build"
+  },
+  "packageManager": "pnpm@11.17.0"
+}
