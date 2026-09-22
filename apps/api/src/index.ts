@@ -1,5 +1,8 @@
 import { Hono } from 'hono'
+
 import { brandsRoute } from './routes/brands'
+import { productsRoute } from './routes/products'
+import { suppliersRoute } from './routes/suppliers'
 
 const app = new Hono<{
   Bindings: CloudflareBindings
@@ -13,5 +16,7 @@ app.get('/api/health', (c) => {
 })
 
 app.route('/api/brands', brandsRoute)
+app.route('/api/suppliers', suppliersRoute)
+app.route('/api/products', productsRoute)
 
 export default app
