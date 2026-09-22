@@ -72,12 +72,19 @@ async function request<T>(
         'content-type:',
         response.headers.get('content-type'),
     )
-    console.log('body:', text)
+    console.log(
+        `[miaomiaozhe] ${init?.method ?? 'GET'} ${path} -> ${response.status}`,
+    )
     console.log('============================')
 
     if (!response.ok) {
+        console.error(
+            '[miaomiaozhe] error:',
+            text.slice(0, 1000),
+        )
+
         throw new Error(
-            `喵喵折 HTTP ${response.status}: ${text.slice(0, 500)}`,
+            `喵喵折 HTTP ${response.status}`,
         )
     }
 
@@ -232,4 +239,30 @@ export async function resolveOffer(
             }),
         ),
     }
+}
+
+export async function getCurrentPrice(
+    token: string,
+    providerRef: string,
+) {
+    const detail = await getOfferDetail(
+        token,
+        providerRef,
+    )
+
+    const price =
+        detail.price_detail?.final_price ??
+        detail.dpr_price ??
+        detail.price
+
+    if (
+        typeof price !== 'number' ||
+        !Number.isFinite(price)
+    ) {
+        throw new Error(
+            `无法获取有效价格 providerRef=${providerRef}`,
+        )
+    }
+
+    return price
 }
