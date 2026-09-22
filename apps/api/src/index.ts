@@ -1,6 +1,9 @@
 import { Hono } from 'hono'
+import { brandsRoute } from './routes/brands'
 
-const app = new Hono()
+const app = new Hono<{
+  Bindings: CloudflareBindings
+}>()
 
 app.get('/api/health', (c) => {
   return c.json({
@@ -8,5 +11,7 @@ app.get('/api/health', (c) => {
     message: 'price-monitor api is running',
   })
 })
+
+app.route('/api/brands', brandsRoute)
 
 export default app
