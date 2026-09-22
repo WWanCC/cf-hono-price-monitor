@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm'
+import {sql} from 'drizzle-orm'
 import {
     check,
     index,
@@ -9,9 +9,10 @@ import {
 } from 'drizzle-orm/sqlite-core'
 
 const timestamp = () =>
-    integer({ mode: 'timestamp' })
+    integer({mode: 'timestamp'})
         .notNull()
-        .default(sql`(unixepoch())`)
+        .default(sql`(unixepoch()
+                     )`)
 
 //
 // 品牌
@@ -20,12 +21,12 @@ const timestamp = () =>
 export const brands = sqliteTable(
     'brands',
     {
-        id: integer('id').primaryKey({ autoIncrement: true }),
+        id: integer('id').primaryKey({autoIncrement: true}),
 
         name: text('name').notNull(),
         note: text('note'),
 
-        enabled: integer('enabled', { mode: 'boolean' })
+        enabled: integer('enabled', {mode: 'boolean'})
             .notNull()
             .default(true),
 
@@ -44,7 +45,7 @@ export const brands = sqliteTable(
 export const suppliers = sqliteTable(
     'suppliers',
     {
-        id: integer('id').primaryKey({ autoIncrement: true }),
+        id: integer('id').primaryKey({autoIncrement: true}),
 
         name: text('name').notNull(),
 
@@ -56,7 +57,7 @@ export const suppliers = sqliteTable(
 
         note: text('note'),
 
-        enabled: integer('enabled', { mode: 'boolean' })
+        enabled: integer('enabled', {mode: 'boolean'})
             .notNull()
             .default(true),
 
@@ -75,7 +76,7 @@ export const suppliers = sqliteTable(
 export const products = sqliteTable(
     'products',
     {
-        id: integer('id').primaryKey({ autoIncrement: true }),
+        id: integer('id').primaryKey({autoIncrement: true}),
 
         brandId: integer('brand_id')
             .notNull()
@@ -95,7 +96,7 @@ export const products = sqliteTable(
 
         note: text('note'),
 
-        enabled: integer('enabled', { mode: 'boolean' })
+        enabled: integer('enabled', {mode: 'boolean'})
             .notNull()
             .default(true),
 
@@ -120,7 +121,7 @@ export const products = sqliteTable(
 export const listings = sqliteTable(
     'listings',
     {
-        id: integer('id').primaryKey({ autoIncrement: true }),
+        id: integer('id').primaryKey({autoIncrement: true}),
 
         productId: integer('product_id')
             .notNull()
@@ -159,7 +160,7 @@ export const listings = sqliteTable(
         // 使用通用名字，避免数据库彻底绑定喵喵折。
         providerRef: text('provider_ref'),
 
-        enabled: integer('enabled', { mode: 'boolean' })
+        enabled: integer('enabled', {mode: 'boolean'})
             .notNull()
             .default(true),
 
@@ -176,7 +177,8 @@ export const listings = sqliteTable(
 
         check(
             'listings_role_check',
-            sql`${table.role} in ('official', 'own')`,
+            sql`${table.role}
+            in ('official', 'own')`,
         ),
     ],
 )
@@ -188,7 +190,7 @@ export const listings = sqliteTable(
 export const listingSkus = sqliteTable(
     'listing_skus',
     {
-        id: integer('id').primaryKey({ autoIncrement: true }),
+        id: integer('id').primaryKey({autoIncrement: true}),
 
         listingId: integer('listing_id')
             .notNull()
@@ -199,11 +201,13 @@ export const listingSkus = sqliteTable(
         // 淘宝真实 skuId
         externalSkuId: text('external_sku_id').notNull(),
 
-        // 例如：
-        // 红色 / M
+        //例如 红色 / M
         name: text('name').notNull(),
 
-        enabled: integer('enabled', { mode: 'boolean' })
+        // 喵喵折这个 SKU 对应的 offer_unique_id
+        providerRef: text('provider_ref'),
+
+        enabled: integer('enabled', {mode: 'boolean'})
             .notNull()
             .default(true),
 
@@ -227,7 +231,7 @@ export const listingSkus = sqliteTable(
 export const monitors = sqliteTable(
     'monitors',
     {
-        id: integer('id').primaryKey({ autoIncrement: true }),
+        id: integer('id').primaryKey({autoIncrement: true}),
 
         // 官方 SKU
         referenceSkuId: integer('reference_sku_id')
@@ -256,7 +260,7 @@ export const monitors = sqliteTable(
             .notNull()
             .default('own >= official'),
 
-        enabled: integer('enabled', { mode: 'boolean' })
+        enabled: integer('enabled', {mode: 'boolean'})
             .notNull()
             .default(true),
 
@@ -302,12 +306,15 @@ export const monitors = sqliteTable(
 
         check(
             'monitors_different_skus_check',
-            sql`${table.referenceSkuId} <> ${table.targetSkuId}`,
+            sql`${table.referenceSkuId}
+            <>
+            ${table.targetSkuId}`,
         ),
 
         check(
             'monitors_last_status_check',
-            sql`${table.lastStatus} in (
+            sql`${table.lastStatus}
+            in (
         'pending',
         'normal',
         'violation',
@@ -316,3 +323,4 @@ export const monitors = sqliteTable(
         ),
     ],
 )
+
