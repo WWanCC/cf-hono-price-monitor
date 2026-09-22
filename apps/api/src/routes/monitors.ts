@@ -18,6 +18,10 @@ import {
     evaluateRule,
 } from '../services/rule-expression'
 
+import {
+    enqueueEnabledMonitors,
+} from '../services/monitor-scheduler'
+
 const createMonitorSchema = z.object({
     referenceSkuId:
         z.number().int().positive(),
@@ -231,6 +235,29 @@ monitorsRoute.get(
 //
 // 立即检测一条
 //
+
+monitorsRoute.post(
+    '/check-all',
+
+    async (c) => {
+        const db =
+            createDb(c.env.DB)
+
+        const count =
+            await enqueueEnabledMonitors(
+                db,
+                c.env.PRICE_CHECK_QUEUE,
+            )
+
+        return c.json({
+            success: true,
+
+            data: {
+                enqueued: count,
+            },
+        })
+    },
+)
 
 monitorsRoute.post(
     '/:id/check',

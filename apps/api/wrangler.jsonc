@@ -17,6 +17,33 @@
 		"required": [
 			"MIAOMIAO_TOKEN"
 		]
+	},
+
+
+	"triggers": {
+		"crons": [
+			"0 1 * * *",
+			"0 7 * * *",
+			"0 13 * * *"
+		]
+	},
+
+	"queues": {
+		"producers": [
+			{
+				"binding": "PRICE_CHECK_QUEUE",
+				"queue": "price-monitor-checks"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "price-monitor-checks",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 2,
+				"max_concurrency": 1
+			}
+		]
 	}
 
 	// "compatibility_flags": [
