@@ -11,7 +11,14 @@
 
 			"migrations_dir": "drizzle"
 		}
-	]
+	],
+
+	"secrets": {
+		"required": [
+			"MIAOMIAO_TOKEN"
+		]
+	}
+
 	// "compatibility_flags": [
 	//   "nodejs_compat"
 	// ],
