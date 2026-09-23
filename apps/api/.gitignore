@@ -3,6 +3,6 @@ node_modules/
 .wrangler/
 .env
 .env.production
-.dev.vars
+#.dev.vars
 *.log
 .DS_Store
