@@ -1,11 +1,9 @@
-// 生产 Worker 配置：D1、Cron、Queue 和构建后的 Vue 静态资源都在这里绑定。
+// 本地开发配置：保留 D1/Cron/Queue 结构，但不把前端 dist 作为 Worker 资源。
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "price-monitor",
   "main": "src/index.ts",
-  // 固定 Workers 运行时兼容行为，升级时应结合官方变更检查。
   "compatibility_date": "2026-09-22",
-
   "d1_databases": [
     {
       "binding": "DB",
@@ -14,8 +12,7 @@
       "migrations_dir": "drizzle"
     }
   ],
-
-  // Cron 使用 UTC；01/07/13 点分别对应北京时间 09/15/21 点。
+  // 本地 Cron 仍保留与生产相同的时间配置，便于验证调度行为。
   "triggers": {
     "crons": [
       "0 1 * * *",
@@ -23,8 +20,7 @@
       "0 13 * * *"
     ]
   },
-
-  // 生产环境使用 Queue 解耦批量检测和 HTTP/Cron 入口。
+  // 本地 Queue 由 Wrangler/Miniflare 模拟，消息仍走同一个 consumer。
   "queues": {
     "producers": [
       {
@@ -41,13 +37,5 @@
         "max_concurrency": 1
       }
     ]
-  },
-
-  // 部署前先构建 apps/web/dist；/api 优先由 Worker 处理，其余请求交给 SPA 资源。
-  "assets": {
-    "directory": "../web/dist",
-    "binding": "ASSETS",
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
   }
 }

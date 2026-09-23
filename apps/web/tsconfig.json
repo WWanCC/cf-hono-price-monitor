@@ -1,4 +1,5 @@
 {
+  // 根配置把应用代码和 Node/Vite 配置拆成两个 project reference。
   "files": [],
   "references": [
     { "path": "./tsconfig.app.json" },

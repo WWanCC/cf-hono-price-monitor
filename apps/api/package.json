@@ -1,13 +1,14 @@
 {
   "name": "api",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --config wrangler.dev.jsonc --port 9029",
     "deploy": "wrangler deploy --minify",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "cf-typegen": "wrangler types --config wrangler.dev.jsonc --env-interface CloudflareBindings",
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply price-monitor-db --local",
-    "db:migrate:remote": "wrangler d1 migrations apply price-monitor-db --remote"
+    "db:migrate:local": "wrangler d1 migrations apply price-monitor-db --local --config wrangler.dev.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply price-monitor-db --remote --config wrangler.jsonc"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@types/node": "^24.13.6",
     "drizzle-kit": "^0.31.10",
-    "wrangler": "^4.110.0"
-  }
+    "wrangler": "^4.136.2"
+  },
+  "version": "1.3.1"
 }
