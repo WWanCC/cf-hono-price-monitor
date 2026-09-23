@@ -1,0 +1,29 @@
+{
+  "source_repo": "WWanCC/cf-hono-price-monitor",
+  "source_branch": "master",
+  "source_head_scanned": "f4e654dadaea28a8743a96f02a6f19a0035d9021",
+  "generated_date": "2026-09-23",
+  "included": [
+    "Hono API",
+    "D1 schema/migrations",
+    "Miaomiaozhe token management in admin UI",
+    "Admin username/password login with HttpOnly session cookie",
+    "Violation-only in-app notifications",
+    "Monitor rule parser",
+    "Cloudflare Queue consumer/producer",
+    "Cron scheduled handler",
+    "Vue 3 admin frontend",
+    "Cloudflare static assets deployment"
+  ],
+  "frontend_layout": "v3-like dark sidebar operations console",
+  "secrets_included": false,
+  "version": "1.3.0",
+  "token_storage": "plaintext D1 app_settings by user requirement; full token not returned to browser",
+  "notification_policy": "create on transition into violation; normal/fetch_error do not notify",
+  "changes": [
+    "SKU deep links in monitor/mapping UI",
+    "Validate Miaomiaozhe token before saving",
+    "Custom persisted rule presets",
+    "Default web dev port 5174"
+  ]
+}

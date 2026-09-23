@@ -1,23 +1,18 @@
 {
+  // 只为 vite.config.ts 提供 Node 类型，不把 Node API 混入浏览器代码。
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "target": "es2023",
+    "target": "ES2023",
     "lib": ["ES2023"],
+    "module": "ESNext",
     "types": ["node"],
     "skipLibCheck": true,
-
-    /* Bundler mode */
-    "module": "nodenext",
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
-
-    /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "strict": true
   },
   "include": ["vite.config.ts"]
 }
