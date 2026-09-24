@@ -1,0 +1,6 @@
+# 首次启动时用于创建管理员账号。生产环境请使用 wrangler secret put。
+ADMIN_USERNAME="admin"
+ADMIN_PASSWORD="请改成至少8位强密码"
+
+# 可留空。登录后台后可在“系统设置 -> 喵喵折 Token”填写。
+MIAOMIAO_TOKEN=""

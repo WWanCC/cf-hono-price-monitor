@@ -1,4 +1,3 @@
-// 本地开发配置：保留 D1/Cron/Queue 结构，但不把前端 dist 作为 Worker 资源。
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "price-monitor",
@@ -12,21 +11,12 @@
       "migrations_dir": "drizzle"
     }
   ],
-  // 本地 Cron 仍保留与生产相同的时间配置，便于验证调度行为。
   "triggers": {
-    "crons": [
-      "0 1 * * *",
-      "0 7 * * *",
-      "0 13 * * *"
-    ]
+    "crons": ["* * * * *"]
   },
-  // 本地 Queue 由 Wrangler/Miniflare 模拟，消息仍走同一个 consumer。
   "queues": {
     "producers": [
-      {
-        "binding": "PRICE_CHECK_QUEUE",
-        "queue": "price-monitor-checks"
-      }
+      { "binding": "PRICE_CHECK_QUEUE", "queue": "price-monitor-checks" }
     ],
     "consumers": [
       {

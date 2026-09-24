@@ -1,13 +1,15 @@
 /**
- * 管理员登录、登出、当前用户和账号修改接口。
+ * 管理员认证接口。
  *
- * 登录时如果数据库还没有管理员，会从 Worker Secret/.dev.vars 初始化首个账号；
- * 后续请求依赖 HttpOnly Cookie 中的 Session Token。
+ * - 首次登录时，如果 D1 中还没有管理员，会从 Worker Secret/.dev.vars 初始化账号；
+ * - 后续请求依赖 HttpOnly Cookie 中的随机 Session Token；
+ * - 数据库只保存 Session Token 的 SHA-256，不保存原始 Token。
  */
 import { zValidator } from '@hono/zod-validator'
 import { eq } from 'drizzle-orm'
-import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
+import type { Context } from 'hono'
 import { Hono } from 'hono'
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { z } from 'zod'
 
 import { createDb } from '../db'
@@ -29,20 +31,21 @@ const loginSchema = z.object({
   password: z.string().min(1),
 })
 
-const updateAccountSchema = z.object({
+const updateSchema = z.object({
   currentPassword: z.string().min(1),
   username: z.string().trim().min(1).optional(),
   newPassword: z.string().min(8).optional(),
 })
 
-export const authRoute = new Hono<{
-  Bindings: CloudflareBindings
-}>()
+export const authRoute = new Hono<{ Bindings: CloudflareBindings }>()
 
-// 从 Cookie 解析当前管理员；路由层不信任前端传来的用户 ID。
-async function currentAdmin(c: any) {
+type AppContext = Context<{ Bindings: CloudflareBindings }>
+
+/** 从 Session Cookie 解析当前管理员；不信任浏览器提交的用户 ID。 */
+async function currentAdmin(c: AppContext) {
   const token = getCookie(c, COOKIE_NAME)
   if (!token) return null
+
   return getAdminFromSession(createDb(c.env.DB), token)
 }
 
@@ -51,14 +54,13 @@ authRoute.post(
   zValidator('json', loginSchema),
   async (c) => {
     const db = createDb(c.env.DB)
-    const env = c.env as CloudflareBindings & {
-      ADMIN_USERNAME?: string
-      ADMIN_PASSWORD?: string
-    }
 
-    // 延迟初始化让首次部署不需要额外的 seed 命令，但管理员配置错误时会明确返回 503。
+    // 延迟初始化首个管理员，避免第一次部署还要额外执行 seed 命令。
     try {
-      await ensureInitialAdmin(db, env)
+      await ensureInitialAdmin(db, {
+        ADMIN_USERNAME: c.env.ADMIN_USERNAME,
+        ADMIN_PASSWORD: c.env.ADMIN_PASSWORD,
+      })
     } catch (error) {
       return c.json(
         {
@@ -84,20 +86,16 @@ authRoute.post(
       ))
     ) {
       return c.json(
-        {
-          success: false,
-          message: '账号或密码错误',
-        },
+        { success: false, message: '账号或密码错误' },
         401,
       )
     }
 
     const session = await createAdminSession(db, user.id)
-    const secure = new URL(c.req.url).protocol === 'https:'
 
     setCookie(c, COOKIE_NAME, session.token, {
       httpOnly: true,
-      secure,
+      secure: new URL(c.req.url).protocol === 'https:',
       sameSite: 'Strict',
       path: '/',
       expires: session.expiresAt,
@@ -117,13 +115,7 @@ authRoute.get('/me', async (c) => {
   const user = await currentAdmin(c)
 
   if (!user) {
-    return c.json(
-      {
-        success: false,
-        message: '未登录',
-      },
-      401,
-    )
+    return c.json({ success: false, message: '未登录' }, 401)
   }
 
   return c.json({
@@ -137,32 +129,24 @@ authRoute.get('/me', async (c) => {
 
 authRoute.post('/logout', async (c) => {
   const token = getCookie(c, COOKIE_NAME)
+
   if (token) {
     await deleteAdminSession(createDb(c.env.DB), token)
   }
-  deleteCookie(c, COOKIE_NAME, { path: '/' })
 
-  return c.json({
-    success: true,
-    data: true,
-  })
+  deleteCookie(c, COOKIE_NAME, { path: '/' })
+  return c.json({ success: true, data: true })
 })
 
 authRoute.patch(
   '/account',
-  zValidator('json', updateAccountSchema),
+  zValidator('json', updateSchema),
   async (c) => {
     const db = createDb(c.env.DB)
     const user = await currentAdmin(c)
 
     if (!user) {
-      return c.json(
-        {
-          success: false,
-          message: '未登录',
-        },
-        401,
-      )
+      return c.json({ success: false, message: '未登录' }, 401)
     }
 
     const [fullUser] = await db
@@ -173,6 +157,7 @@ authRoute.patch(
 
     const body = c.req.valid('json')
 
+    // 改账号/密码前再次验证当前密码，防止已有 Session 被滥用。
     if (
       !fullUser ||
       !(await verifyPassword(
@@ -182,10 +167,7 @@ authRoute.patch(
       ))
     ) {
       return c.json(
-        {
-          success: false,
-          message: '当前密码错误',
-        },
+        { success: false, message: '当前密码错误' },
         400,
       )
     }
@@ -199,7 +181,9 @@ authRoute.patch(
       updatedAt: new Date(),
     }
 
-    if (body.username) patch.username = body.username
+    if (body.username) {
+      patch.username = body.username
+    }
 
     if (body.newPassword) {
       const passwordRecord = await createPasswordRecord(body.newPassword)
@@ -217,20 +201,14 @@ authRoute.patch(
           username: adminUsers.username,
         })
 
-      return c.json({
-        success: true,
-        data: updated,
-      })
+      return c.json({ success: true, data: updated })
     } catch (error) {
       if (
         error instanceof Error &&
         error.message.includes('UNIQUE constraint failed')
       ) {
         return c.json(
-          {
-            success: false,
-            message: '该登录账号已存在',
-          },
+          { success: false, message: '该登录账号已存在' },
           409,
         )
       }

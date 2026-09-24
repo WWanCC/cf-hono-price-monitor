@@ -1,21 +1,29 @@
 /**
  * 管理员认证服务。
  *
- * 本文件只负责密码记录、管理员初始化和 Session 的创建/查询/删除；HTTP Cookie
- * 的读写仍由路由层负责，这样密码算法和登录流程可以独立测试。
+ * 本文件只负责密码派生、管理员初始化和 Session 数据库记录；
+ * Cookie 的读写由 routes/auth.ts 负责，便于以后单独测试认证算法。
  */
-import { and, eq, gt } from 'drizzle-orm'
+import { and, eq, gt, lt } from 'drizzle-orm'
 
 import type { Db } from '../db'
 import { adminSessions, adminUsers } from '../db/schema'
 
 const encoder = new TextEncoder()
 const SESSION_DAYS = 7
-const PBKDF2_ITERATIONS = 150_000
+
+/**
+ * Cloudflare Workers Web Crypto 当前运行时对 PBKDF2 的 iteration 上限为 100000。
+ * 之前使用 150000 会在线上初始化管理员时直接报错，因此这里固定为 100000。
+ */
+const PBKDF2_ITERATIONS = 100_000
 
 function bytesToBase64Url(bytes: Uint8Array) {
   let binary = ''
-  for (const byte of bytes) binary += String.fromCharCode(byte)
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+
   return btoa(binary)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
@@ -27,6 +35,7 @@ function base64UrlToBytes(value: string) {
     .replace(/-/g, '+')
     .replace(/_/g, '/')
     .padEnd(Math.ceil(value.length / 4) * 4, '=')
+
   const binary = atob(normalized)
   return Uint8Array.from(binary, (char) => char.charCodeAt(0))
 }
@@ -42,7 +51,10 @@ async function sha256Hex(value: string) {
     .join('')
 }
 
-// PBKDF2 的计算成本用于抵抗密码猜测；salt 保证相同密码不会产生相同结果。
+/**
+ * PBKDF2-SHA256 派生密码哈希。
+ * 随机 salt 保证相同密码不会得到相同的数据库记录。
+ */
 async function derivePasswordHash(
   password: string,
   salt: Uint8Array,
@@ -79,6 +91,10 @@ export async function createPasswordRecord(password: string) {
   }
 }
 
+/**
+ * 使用恒定长度的逐字节比较，而不是直接 `actual === expected`。
+ * 这不能替代完整的认证防护，但可以避免最直接的提前退出比较。
+ */
 export async function verifyPassword(
   password: string,
   passwordHash: string,
@@ -92,13 +108,18 @@ export async function verifyPassword(
   if (actual.length !== passwordHash.length) return false
 
   let mismatch = 0
-  for (let i = 0; i < actual.length; i++) {
-    mismatch |= actual.charCodeAt(i) ^ passwordHash.charCodeAt(i)
+  for (let index = 0; index < actual.length; index++) {
+    mismatch |=
+      actual.charCodeAt(index) ^ passwordHash.charCodeAt(index)
   }
 
   return mismatch === 0
 }
 
+/**
+ * 首次部署的懒初始化：只有 admin_users 为空时才读取 Worker Secret 创建账号。
+ * 已经初始化后，再修改 Secret 不会自动覆盖数据库中的管理员密码。
+ */
 export async function ensureInitialAdmin(
   db: Db,
   env: {
@@ -122,11 +143,9 @@ export async function ensureInitialAdmin(
     )
   }
 
-  const passwordRecord = await createPasswordRecord(password)
-
   await db.insert(adminUsers).values({
     username,
-    ...passwordRecord,
+    ...(await createPasswordRecord(password)),
   })
 }
 
@@ -148,7 +167,10 @@ export async function getAdminByUsername(
   return user ?? null
 }
 
-// Cookie 中的 Token 是随机值，数据库只保存它的 SHA-256，数据库泄露时不能直接冒充会话。
+/**
+ * 浏览器得到随机 Session Token；数据库只保存其 SHA-256。
+ * 即使数据库内容泄露，也不能直接把 session_hash 当作 Cookie 使用。
+ */
 export async function createAdminSession(
   db: Db,
   adminUserId: number,
@@ -167,13 +189,9 @@ export async function createAdminSession(
     expiresAt,
   })
 
-  return {
-    token,
-    expiresAt,
-  }
+  return { token, expiresAt }
 }
 
-// 每次受保护请求都检查 Session 未过期且关联管理员仍处于 enabled 状态。
 export async function getAdminFromSession(
   db: Db,
   token: string,
@@ -185,7 +203,6 @@ export async function getAdminFromSession(
       id: adminUsers.id,
       username: adminUsers.username,
       enabled: adminUsers.enabled,
-      sessionHash: adminSessions.sessionHash,
     })
     .from(adminSessions)
     .innerJoin(
@@ -209,7 +226,15 @@ export async function deleteAdminSession(
   token: string,
 ) {
   const sessionHash = await sha256Hex(token)
+
   await db
     .delete(adminSessions)
     .where(eq(adminSessions.sessionHash, sessionHash))
+}
+
+/** 由 Cron 定期清理过期 Session，避免表无限增长。 */
+export async function cleanupExpiredSessions(db: Db) {
+  await db
+    .delete(adminSessions)
+    .where(lt(adminSessions.expiresAt, new Date()))
 }

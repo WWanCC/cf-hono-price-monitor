@@ -1,12 +1,11 @@
 {
-  // Worker 代码使用现代 ESM 和严格类型检查；jsx 选项是 Hono 类型配置所需。
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
     "skipLibCheck": true,
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "WebWorker"],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx"
   }

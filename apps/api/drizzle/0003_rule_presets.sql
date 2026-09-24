@@ -1,4 +1,3 @@
--- 常用价格规则模板；初始数据只是示例，管理员仍可在页面新增、修改或删除。
 CREATE TABLE `rule_presets` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   `name` text NOT NULL,

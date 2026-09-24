@@ -1,9 +1,5 @@
 packages:
-  - "apps/*"
-
+  - 'apps/*'
 allowBuilds:
   esbuild: true
   workerd: true
-
-minimumReleaseAgeExclude:
-  - wrangler@4.136.2

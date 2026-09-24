@@ -1,5 +1,4 @@
 -- 业务主表迁移：品牌、厂家、商品、Listing、SKU 和 Monitor。
--- 外键/唯一索引/检查约束对应 apps/api/src/db/schema.ts 中的关系和不变量。
 CREATE TABLE `brands` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   `name` text NOT NULL,

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pnpm build:web *)",
+      "PowerShell(pnpm *)"
+    ]
+  }
+}

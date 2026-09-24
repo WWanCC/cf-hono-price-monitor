@@ -1,5 +1,3 @@
--- 管理端基础设施迁移：保存应用设置、管理员、Session 和站内信。
--- Session 只保存哈希，管理员密码字段保存 PBKDF2 派生值而非明文。
 CREATE TABLE `app_settings` (
   `key` text PRIMARY KEY NOT NULL,
   `value` text NOT NULL,

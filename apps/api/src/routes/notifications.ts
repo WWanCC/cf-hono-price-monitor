@@ -1,75 +1,74 @@
-/**
- * 站内信接口。通知由监控服务在“进入违规状态”时创建，页面这里只负责查询和已读操作。
- */
+/** 站内信接口：列表、未读数、单条/全部已读和删除。 */
 import { eq, sql } from 'drizzle-orm'
 import { Hono } from 'hono'
 
 import { createDb } from '../db'
 import { notifications } from '../db/schema'
+import { parsePositiveIntParam } from '../lib/http'
 
 export const notificationsRoute = new Hono<{
   Bindings: CloudflareBindings
 }>()
 
 notificationsRoute.get('/', async (c) => {
-  // 列表限制 100 条，避免通知增长后一次响应过大；未读数量单独查询。
-  const db = createDb(c.env.DB)
-  const data = await db
+  const data = await createDb(c.env.DB)
     .select()
     .from(notifications)
-    .orderBy(sql`${notifications.id} desc`)
-    .limit(100)
+    .orderBy(sql`${notifications.createdAt} desc`)
 
   return c.json({ success: true, data })
 })
 
 notificationsRoute.get('/unread-count', async (c) => {
-  const db = createDb(c.env.DB)
-  const [row] = await db
-    .select({ count: sql<number>`count(*)` })
+  const rows = await createDb(c.env.DB)
+    .select({ id: notifications.id })
     .from(notifications)
     .where(eq(notifications.read, false))
 
   return c.json({
     success: true,
-    data: {
-      count: Number(row?.count ?? 0),
-    },
+    data: { count: rows.length },
   })
 })
 
 notificationsRoute.patch('/:id/read', async (c) => {
-  const id = Number(c.req.param('id'))
-  if (!Number.isInteger(id) || id <= 0) {
-    return c.json(
-      { success: false, message: '无效的站内信 ID' },
-      400,
-    )
+  const id = parsePositiveIntParam(c)
+  if (!id) {
+    return c.json({ success: false, message: '无效的通知 ID' }, 400)
   }
 
-  const db = createDb(c.env.DB)
-  const [updated] = await db
+  const [notification] = await createDb(c.env.DB)
     .update(notifications)
     .set({ read: true })
     .where(eq(notifications.id, id))
     .returning()
 
-  if (!updated) {
-    return c.json(
-      { success: false, message: '站内信不存在' },
-      404,
-    )
-  }
-
-  return c.json({ success: true, data: updated })
+  return notification
+    ? c.json({ success: true, data: notification })
+    : c.json({ success: false, message: '通知不存在' }, 404)
 })
 
 notificationsRoute.post('/read-all', async (c) => {
-  const db = createDb(c.env.DB)
-  await db
+  await createDb(c.env.DB)
     .update(notifications)
     .set({ read: true })
     .where(eq(notifications.read, false))
 
   return c.json({ success: true, data: true })
+})
+
+notificationsRoute.delete('/:id', async (c) => {
+  const id = parsePositiveIntParam(c)
+  if (!id) {
+    return c.json({ success: false, message: '无效的通知 ID' }, 400)
+  }
+
+  const [deleted] = await createDb(c.env.DB)
+    .delete(notifications)
+    .where(eq(notifications.id, id))
+    .returning({ id: notifications.id })
+
+  return deleted
+    ? c.json({ success: true, data: true })
+    : c.json({ success: false, message: '通知不存在' }, 404)
 })
